@@ -1,74 +1,31 @@
-const API_URL = "https://novaaiapi.gyansinha19.workers.dev/"; // For separate Worker deployment, replace with your full Worker URL.
-const form = document.getElementById("chatForm");
-const input = document.getElementById("promptInput");
-const messagesEl = document.getElementById("messages");
-const welcome = document.getElementById("welcome");
-const sendButton = document.getElementById("sendButton");
-const statusEl = document.getElementById("connectionStatus");
-const recentList = document.getElementById("recentList");
-const conversations = [];
-let currentConversation = [];
-let busy = false;
-
-function fitInput(){ input.style.height="auto"; input.style.height=Math.min(input.scrollHeight,150)+"px"; }
-input.addEventListener("input",fitInput);
-input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();form.requestSubmit();}});
-document.querySelectorAll(".suggestion").forEach(b=>b.addEventListener("click",()=>{input.value=b.dataset.prompt||"";fitInput();input.focus();}));
-document.getElementById("newChat").addEventListener("click",newChat);
-document.getElementById("homeLink").addEventListener("click",newChat);
-document.getElementById("mobileMenu").addEventListener("click",()=>document.getElementById("sidebar").classList.toggle("open"));
-document.addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"){e.preventDefault();newChat();input.focus();}});
-
-function newChat(){
-  if(currentConversation.length) saveConversation();
-  currentConversation=[]; messagesEl.innerHTML=""; welcome.hidden=false;
-  document.getElementById("sidebar").classList.remove("open");
-  input.value="";fitInput();input.focus();
-}
-function saveConversation(){
-  const first=currentConversation.find(m=>m.role==="user");
-  if(!first)return;
-  const title=first.content.length>31?first.content.slice(0,31)+"…":first.content;
-  const existing=conversations.find(c=>c.id===currentConversation);
-  if(!existing) conversations.unshift({id:currentConversation,title});
-  renderRecent();
-}
-function renderRecent(){
-  recentList.innerHTML="";
-  if(!conversations.length){recentList.innerHTML='<div class="empty-recent">Your conversations<br>will appear here.</div>';return;}
-  conversations.slice(0,8).forEach(c=>{const b=document.createElement("button");b.className="recent-item";b.textContent=c.title;b.title=c.title;b.onclick=()=>{currentConversation=c.id;messagesEl.innerHTML="";welcome.hidden=true;c.id.forEach(m=>renderMessage(m.role,m.content));document.getElementById("sidebar").classList.remove("open");};recentList.appendChild(b);});
-}
-function renderMessage(role,content){
-  const wrap=document.createElement("div");wrap.className="message "+(role==="user"?"user":"assistant");
-  const av=document.createElement("div");av.className="message-avatar";av.textContent=role==="user"?"YOU":"✳";
-  const body=document.createElement("div");body.className="message-body";
-  const label=document.createElement("div");label.className="message-label";label.textContent=role==="user"?"You":"Nova AI";
-  const text=document.createElement("div");text.className="message-text";text.textContent=content;
-  body.append(label,text);wrap.append(av,body);messagesEl.appendChild(wrap);return text;
-}
-function addTyping(){
-  const wrap=document.createElement("div");wrap.className="message assistant";wrap.id="typing";
-  wrap.innerHTML='<div class="message-avatar">✳</div><div class="message-body"><div class="message-label">Nova AI is thinking</div><div class="typing"><span></span><span></span><span></span></div></div>';
-  messagesEl.appendChild(wrap);return wrap;
-}
-async function sendMessage(content){
-  if(busy||!content.trim())return;
-  busy=true;sendButton.disabled=true;welcome.hidden=true;
-  currentConversation.push({role:"user",content});
-  renderMessage("user",content);input.value="";fitInput();messagesEl.scrollTop=messagesEl.scrollHeight;
-  const typing=addTyping();messagesEl.scrollTop=messagesEl.scrollHeight;
-  try{
-    const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:currentConversation.slice(-20)})});
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok)throw new Error(data.error||`Request failed (${response.status}).`);
-    const reply=String(data.reply||"No response received.");
-    typing.remove();currentConversation.push({role:"assistant",content:reply});renderMessage("assistant",reply);
-    statusEl.textContent="AI connected";
-  }catch(err){
-    typing.remove();
-    const msg=err.message.includes("Failed to fetch")?"The AI backend is not connected yet. Deploy the Cloudflare Worker and set your API key as a secret.":err.message;
-    const text=renderMessage("assistant","I couldn't reach the AI service.");const note=document.createElement("div");note.className="error-note";note.textContent=msg;text.parentElement.appendChild(note);
-    statusEl.textContent="Backend not connected";
-  }finally{busy=false;sendButton.disabled=false;input.focus();messagesEl.scrollTop=messagesEl.scrollHeight;}
-}
-form.addEventListener("submit",e=>{e.preventDefault();sendMessage(input.value);});
+// Nova AI frontend. Keep the Gemini API key only in Cloudflare Worker Secrets.
+const API_URL = "https://novaaiapi.gyansinha19.workers.dev/";
+const $ = id => document.getElementById(id);
+const form=$("chatForm"),input=$("promptInput"),messagesEl=$("messages"),welcome=$("welcome"),sendButton=$("sendButton"),statusEl=$("status"),statusLight=$("statusLight"),historyEl=$("history"),typing=$("typing"),conversationEl=$("conversation"),sidebar=$("sidebar"),scrim=$("scrim"),toastEl=$("toast");
+const STORAGE_KEY="nova-ai-conversations-v1";let conversations=load(),currentId=null,current=[],busy=false,toastTimer;
+function id(){return "c_"+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function load(){try{const v=JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]");return Array.isArray(v)?v:[]}catch{return []}}
+function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(conversations.slice(0,30)))}catch{toast("Could not save history in this browser.")}}
+function toast(t){toastEl.textContent=t;toastEl.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.classList.remove("show"),2800)}
+function status(t,state="ready"){statusEl.textContent=t;statusLight.classList.toggle("busy",state==="busy");statusLight.classList.toggle("error",state==="error")}
+function bottom(){requestAnimationFrame(()=>conversationEl.scrollTop=conversationEl.scrollHeight)}
+function title(t){t=String(t).replace(/\s+/g," ").trim();return t.length>34?t.slice(0,34).trim()+"…":t||"New chat"}
+function ensure(first=""){if(!currentId)currentId=id();let c=conversations.find(x=>x.id===currentId);if(!c){c={id:currentId,title:title(first),updatedAt:Date.now(),messages:[]};conversations.unshift(c)}else if(!c.messages.length&&first)c.title=title(first);return c}
+function persist(){if(!currentId||!current.length)return;const c=ensure(current[0]?.content||"");c.messages=current.slice(-80);c.updatedAt=Date.now();conversations=[c,...conversations.filter(x=>x.id!==currentId)].slice(0,30);save();renderHistory()}
+function showWelcome(show){welcome.style.display=show?"flex":"none"}
+function addMessage(role,text,error=false){const row=document.createElement("article");row.className="message-row "+(role==="user"?"user":"ai");const av=document.createElement("div");av.className="avatar "+(role==="user"?"user-avatar":"ai-avatar");if(role==="user")av.textContent="Y";else{const mark=document.createElement("span");mark.className="logo tiny";for(let i=0;i<4;i++)mark.appendChild(document.createElement("i"));av.appendChild(mark)}
+const content=document.createElement("div");content.className="message-content";const meta=document.createElement("div");meta.className="message-meta";const name=document.createElement("strong");name.textContent=role==="user"?"You":"Nova AI";const time=document.createElement("span");time.textContent=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});meta.append(name,time);const bubble=document.createElement("div");bubble.className="message-bubble";if(error)bubble.classList.add("message-error");bubble.textContent=String(text??"");content.append(meta,bubble);
+if(role!=="user"&&!error){const actions=document.createElement("div");actions.className="message-actions";const copy=document.createElement("button");copy.type="button";copy.className="message-action";copy.textContent="▢ Copy";copy.onclick=async()=>{try{await navigator.clipboard.writeText(String(text));copy.textContent="Copied";setTimeout(()=>copy.textContent="▢ Copy",1200)}catch{toast("Clipboard access was blocked by the browser.")}};actions.appendChild(copy);content.appendChild(actions)}row.append(av,content);messagesEl.appendChild(row);bottom()}
+function render(){messagesEl.replaceChildren();showWelcome(current.length===0);current.forEach(m=>addMessage(m.role,m.content));renderHistory();bottom()}
+function renderHistory(){historyEl.replaceChildren();if(!conversations.length){const e=document.createElement("div");e.className="history-empty";e.textContent="Your conversations will appear here.";historyEl.appendChild(e);return}conversations.slice(0,20).forEach(c=>{const b=document.createElement("button");b.type="button";b.className="history-item"+(c.id===currentId?" selected":"");b.textContent="▢  "+(c.title||"New chat");b.onclick=()=>{currentId=c.id;current=Array.isArray(c.messages)?c.messages.map(m=>({role:m.role,content:m.content})):[];render();hideSidebar()};historyEl.appendChild(b)})}
+function hideSidebar(){sidebar.classList.remove("open");scrim.classList.remove("show")}function showSidebar(){sidebar.classList.add("open");scrim.classList.add("show")}
+function newChat(){if(busy){toast("Wait for Nova to finish the current reply.");return}currentId=null;current=[];messagesEl.replaceChildren();showWelcome(true);renderHistory();input.value="";input.style.height="auto";status("Ready to help");input.focus();hideSidebar()}
+function setBusy(v){busy=v;sendButton.disabled=v;input.disabled=v;typing.classList.toggle("hidden",!v);if(v)status("Thinking…","busy");else if(!statusLight.classList.contains("error"))status("Ready to help");bottom()}
+async function send(text){const prompt=String(text||"").trim();if(!prompt||busy)return;if(prompt.length>12000){toast("Please keep your message under 12,000 characters.");return}ensure(prompt);current.push({role:"user",content:prompt});showWelcome(false);addMessage("user",prompt);input.value="";input.style.height="auto";persist();setBusy(true);
+try{const res=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:current.map(m=>({role:m.role,content:m.content}))})});let data;try{data=await res.json()}catch{throw Error("The API returned an unreadable response.")}if(!res.ok)throw Error(data?.error||`Request failed (${res.status}).`);const reply=data.reply||data.response||data.text;if(typeof reply!=="string"||!reply.trim())throw Error("No reply returned. Check your Cloudflare Worker logs.");current.push({role:"assistant",content:reply});addMessage("assistant",reply);persist();status("Ready to help")}catch(e){const msg=e instanceof TypeError?"Could not reach Nova's API. Check connection and Worker CORS settings.":(e.message||"Something went wrong.");addMessage("assistant",msg,true);status("Connection issue","error");toast("Nova couldn't reply. See the error in chat.")}finally{setBusy(false);input.disabled=false;input.focus()}}
+form.addEventListener("submit",e=>{e.preventDefault();send(input.value)});input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();form.requestSubmit()}});input.addEventListener("input",()=>{input.style.height="auto";input.style.height=Math.min(input.scrollHeight,180)+"px"});document.querySelectorAll("[data-prompt]").forEach(b=>b.addEventListener("click",()=>send(b.dataset.prompt)));
+$("newChat").onclick=newChat;$("home").onclick=e=>{e.preventDefault();newChat()};$("chatNav").onclick=newChat;$("menu").onclick=showSidebar;$("close").onclick=hideSidebar;scrim.onclick=hideSidebar;
+$("clearHistory").onclick=()=>{if(!conversations.length){toast("No saved chats to clear.");return}if(!confirm("Clear all saved chat history from this browser?"))return;conversations=[];save();newChat();renderHistory();toast("Chat history cleared.")};
+$("theme").onclick=()=>{document.body.classList.toggle("light");try{localStorage.setItem("nova-ai-theme",document.body.classList.contains("light")?"light":"dark")}catch{}};
+$("more").onclick=()=>toast("File uploads aren't enabled yet.");document.addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"){e.preventDefault();newChat()}if(e.key==="Escape")hideSidebar()});
+try{if(localStorage.getItem("nova-ai-theme")==="light")document.body.classList.add("light")}catch{}renderHistory();showWelcome(true);
