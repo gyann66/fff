@@ -1,4 +1,4 @@
-const API_URL = "/api/chat"; // For separate Worker deployment, replace with your full Worker URL.
+const API_URL = "https://novaaiapi.gyansinha19.workers.dev/"; // For separate Worker deployment, replace with your full Worker URL.
 const form = document.getElementById("chatForm");
 const input = document.getElementById("promptInput");
 const messagesEl = document.getElementById("messages");
