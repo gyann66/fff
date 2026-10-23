@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090b12">
+  <meta name="description" content="Nova AI — a clean, thoughtful AI chat experience.">
+  <title>Nova AI — Think beyond</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#" aria-label="Nova AI home"><span class="brand-mark">✳</span><span>nova<span class="brand-ai">.ai</span></span></a>
+      <button class="new-chat" id="newChat"><span>＋</span> New conversation <kbd>⌘ K</kbd></button>
+      <div class="side-label">YOUR SPACE</div>
+      <button class="side-link active" id="homeLink"><span>◈</span> Chat</button>
+      <div class="side-label recent-label">RECENT</div>
+      <div class="recent-list" id="recentList"><div class="empty-recent">Your conversations<br>will appear here.</div></div>
+      <div class="sidebar-bottom">
+        <div class="status-row"><span class="status-dot"></span><span id="connectionStatus">Ready to connect</span></div>
+        <div class="profile"><div class="avatar">N</div><div><strong>Nova workspace</strong><small>Personal edition</small></div><span class="profile-menu">···</span></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="mobile-menu" id="mobileMenu" aria-label="Open menu">☰</button>
+        <div class="model-pill"><span class="model-spark">✳</span> Nova Assistant <span class="chevron">⌄</span></div>
+        <div class="top-actions"><span class="secure-label"><span class="tiny-lock">◇</span> Private workspace</span><a class="github-link" href="https://github.com/" target="_blank" rel="noreferrer">Built for you ↗</a></div>
+      </header>
+
+      <section class="chat-stage" id="chatStage">
+        <div class="welcome" id="welcome">
+          <div class="hero-orb"><div class="orb-core">✳</div><span class="orb-ring ring-one"></span><span class="orb-ring ring-two"></span><span class="orb-spark spark-one">✦</span><span class="orb-spark spark-two">·</span></div>
+          <div class="eyebrow"><span class="eyebrow-line"></span> YOUR AI, YOUR WORKSPACE <span class="eyebrow-line"></span></div>
+          <h1>Think beyond<br><span>the ordinary.</span></h1>
+          <p class="hero-copy">A little clarity can change everything.<br>What would you like to work on today?</p>
+          <div class="suggestions">
+            <button class="suggestion" data-prompt="Help me plan my week and focus on what matters most."><span class="suggestion-icon violet">◷</span><span><b>Plan my week</b><small>Turn ideas into action</small></span><span class="suggestion-arrow">↗</span></button>
+            <button class="suggestion" data-prompt="Explain artificial intelligence in simple words, with examples."><span class="suggestion-icon blue">⌘</span><span><b>Learn something</b><small>Make complex things simple</small></span><span class="suggestion-arrow">↗</span></button>
+            <button class="suggestion" data-prompt="Give me five creative website or startup ideas I can build on a zero budget."><span class="suggestion-icon pink">✧</span><span><b>Explore ideas</b><small>Find a fresh perspective</small></span><span class="suggestion-arrow">↗</span></button>
+            <button class="suggestion" data-prompt="Help me write a clear, professional message asking for an update."><span class="suggestion-icon green">↗</span><span><b>Write something</b><small>Start with a blank page</small></span><span class="suggestion-arrow">↗</span></button>
+          </div>
+        </div>
+        <div class="messages" id="messages" aria-live="polite"></div>
+      </section>
+
+      <section class="composer-wrap">
+        <form class="composer" id="chatForm">
+          <textarea id="promptInput" rows="1" placeholder="Message Nova..." aria-label="Message Nova"></textarea>
+          <div class="composer-tools"><div class="composer-hint"><span class="plus-tool">＋</span><span>Ask anything, explore everything</span></div><button class="send-button" id="sendButton" type="submit" aria-label="Send message"><span>↑</span></button></div>
+        </form>
+        <p class="disclaimer" id="disclaimer">AI can make mistakes. Check important information. <span>·</span> <a href="https://ai.google.dev/gemini-api/docs" target="_blank" rel="noreferrer">Powered by your configured AI provider</a></p>
+      </section>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
